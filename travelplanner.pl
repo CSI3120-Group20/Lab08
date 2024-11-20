@@ -38,7 +38,7 @@ total_expenses(Destination, Total) :-
     expense(Destination, _, Amount),
     retract(expense(Destination, _, Amount)),  % Temporarily retract to avoid duplicates
     total_expenses(Destination, Remaining),
-    Total is Amount + Remaining,
+    Total is Amount + Remaining,!,
     assertz(expense(Destination, _, Amount)).  % Re-assert the retracted fact 
 
 % 3. Budget Validation
