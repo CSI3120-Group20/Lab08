@@ -176,30 +176,80 @@ filter_destinations_by_expense_amount(Low,High,Destination):-
 %   ▪ Listing expenses for a destination
 %   ▪ Checking budget
 
-% Main command parser
-command --> 
-    add_destination_command.
+% Main rule
+% Parse input and execute corresponding command
+process_command(InputList) :-
+    % The predicate `phrase/2` attempts to match the `InputList` with the grammar rule defined in `command(Command)`
+    % If the match is successful, The variable `Command` will store the parsed result.
+    phrase(command(Command), InputList),
+    
+    % Execute the matched command
+    execute_command(Command).
 
-% The entry point for parsing user commands
-parse_command(Command) :-
-    atom_codes(Command, Codes), % Convert the input command to a list of codes
-    phrase(command, Codes). % Use phrase/2 to apply the DCG rules
+
+% Define Grammar Rules for Parsing Commands
+
+% 5.1. Adding a destination
+% `add_destination(Name, StartDate, EndDate, Budget)` is used to store the phrased result
+command(add_destination(Name, StartDate, EndDate, Budget)) -->
+    % The actual input is instantiated when invoking `phrase/2`
+
+    % The expected input format (i.e. how the input is matched)
+    ['add', 'destination', Name, 'from', StartDate, 'to', EndDate, 'with', 'budget', Budget],
+
+    {
+        % Ensures that `Name` is an atom. In Prolog, atoms are used for symbolic values or constants (like 'Paris' or 'London').
+        atom(Name),
+        atom(StartDate),
+        atom(EndDate),
+
+        % Check if `Budget` is a number. return true if `Budget` is numeric (integer or float)
+        number(Budget)
+    }.
 
 
-% DCG rule for adding a destination
-add_destination_command --> 
-    "add", "destination", Name, "from", StartDate, "to", EndDate, "with", Budget, {add_destination(Name, StartDate, EndDate, Budget)}.
+% 5.2. Removing a destination
+% if the input format defined below matches, the output will be a Prolog term `remove_destination(Name)`
+command(remove_destination(Name)) -->
+    % The expected input format: `['remove', 'destination', Name]`, start with the word 'remove', followed by the word 'destination'.
+    ['remove', 'destination', Name],
 
-% DCG rules for parsing parameters (Name, StartDate, EndDate, Budget)
+    { atom(Name) }.
 
-% `[Name]` will be bound to whatever is the first element of the input list during parsing.
-% `{atom(Name)}`: It ensures that the value bound to `Name` is an atom.
-% In Prolog, an atom is a fundamental type of data used to represent symbolic constants or identifiers.
-% It is a type of term, and unlike a variable (which can hold any value), an atom is a constant value that cannot be changed once it's defined.
-r --> [Name], {atom(Name)}.
-s --> [StartDate], {atom(StartDate)}.
-e --> [EndDate], {atom(EndDate)}.
-b --> [Budget], {number(Budget)}.
+
+% 5.3. Listing expenses for a destination
+command(list_expenses(Destination)) -->
+    ['list', 'expenses', 'for', Destination],
+    { atom(Destination) }.
+
+% 5.4. Checking budget
+command(validate_budget(Destination)) -->
+    ['check', 'budget', 'for', Destination],
+    { atom(Destination) }.
+
+
+% Execute the command
+% If the argument passed to `execute_command` matches the pattern `add_destination(Name, StartDate, EndDate, Budget)`
+% then the clause in the body (i.e. add_destination(Name, StartDate, EndDate, Budget)) will be executed
+execute_command(add_destination(Name, StartDate, EndDate, Budget)) :-
+    add_destination(Name, StartDate, EndDate, Budget).
+
+execute_command(remove_destination(Name)) :-
+    remove_destination(Name).
+
+execute_command(list_expenses(Destination)) :-
+    format("Expenses for destination '~w':\n", [Destination]),
+    forall(expense(Destination, Category, Amount),
+           format("  - ~w: ~w\n", [Category, Amount])).
+
+execute_command(validate_budget(Destination)) :-
+    validate_budget(Destination).
+
+% Handle unknown commands
+execute_command(_) :-
+    format("Unknown command or invalid format.\n").
+
+
 
 % 6. Saving and Loading Journey (File I/O)
 save(File):-
